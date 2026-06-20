@@ -106,3 +106,20 @@ meter { width: 100%; height: 16px; accent-color: var(--cyan); }
 @keyframes glow { from { box-shadow: inset 0 0 0 rgba(87,220,255,0); } to { box-shadow: inset 0 0 24px rgba(87,220,255,.18); } }
 @media (max-width: 1250px) { .lab-header, .lab-grid { grid-template-columns: 1fr; } .side-panel, .main-stage { min-height: auto; } .book-grid, .vector-row { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .lab-header, .lab-shell { width: min(100% - 16px, 1740px); } .before-after { grid-template-columns: 1fr; } .phase-rail { grid-auto-columns: minmax(160px, 1fr); } }
+.lemma-grid, .training-examples, .evidence-card, .note-card { border: 1px solid var(--border); background: var(--panel-2); border-radius: 18px; padding: 14px; }
+.lemma-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.lemma-grid span, .training-examples div { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 14px; background: #081426; }
+.lemma-grid b, .training-examples b { color: var(--cyan); }
+.lemma-grid strong { color: var(--green); }
+.lemma-grid i, .training-examples i, .evidence-card span { color: var(--yellow); font-style: normal; font-size: 1.5rem; }
+.note-card p, .evidence-card p { color: var(--muted); }
+.training-examples { display: grid; gap: 10px; }
+.training-examples h3, .training-examples p { margin: 0; text-align: center; }
+.training-examples h3, .note-card b, .evidence-card b { color: var(--yellow); }
+.context-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+.context-compare section { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-radius: 12px; background: #081426; }
+.context-compare b { width: 100%; color: var(--yellow); }
+.context-compare span { padding: 5px 8px; border-radius: 999px; background: rgba(87,220,255,.12); border: 1px solid var(--border); color: var(--ink); }
+.evidence-card { display: grid; gap: 6px; }
+.evidence-card p { margin: 0; padding: 8px 10px; border-radius: 10px; background: #081426; }
+@media (max-width: 760px) { .lemma-grid, .context-compare { grid-template-columns: 1fr; } }
