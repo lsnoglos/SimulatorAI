@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador GPT Educativo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!--
+    Simulador educativo de un LLM tipo GPT.
+    Todo el proyecto usa HTML, CSS y JavaScript puro para que pueda abrirse
+    directamente en un navegador, sin dependencias ni frameworks.
+  -->
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Laboratorio universitario de Inteligencia Artificial</p>
+      <h1>Simulador visual del funcionamiento interno de un modelo tipo GPT</h1>
+      <p>
+        Avanza paso a paso por entrenamiento, inferencia y comparación. Cada fase
+        muestra datos de entrada, salida, cálculos, parámetros y eventos internos.
+      </p>
+    </div>
+    <div class="phase-card" aria-live="polite">
+      <span id="moduleBadge">Módulo A</span>
+      <strong id="phaseTitle">Construcción del conocimiento</strong>
+      <small id="phaseCounter">Paso 1 de 29</small>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="controls" aria-label="Controles generales del simulador">
+      <button id="prevBtn">← Paso anterior</button>
+      <button id="nextBtn" class="primary">Siguiente paso →</button>
+      <button id="resetBtn">Reiniciar simulación</button>
+      <button id="autoBtn">Autoejecución</button>
+      <label>
+        Velocidad
+        <select id="speedSelect">
+          <option value="2200">Lenta</option>
+          <option value="1400" selected>Normal</option>
+          <option value="750">Rápida</option>
+        </select>
+      </label>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Progreso</span><span id="progressText">0%</span></div>
+        <progress id="progressBar" value="0" max="100"></progress>
+      </div>
+    </section>
+
+    <nav class="timeline" id="timeline" aria-label="Línea temporal del proceso"></nav>
+
+    <section class="query-panel" id="queryPanel">
+      <label for="userQuestion">Pregunta para inferencia</label>
+      <input id="userQuestion" value="¿Qué es un gato?" />
+      <button id="applyQuestion">Aplicar pregunta</button>
+      <small>La consulta se tokeniza cuando llegas al Módulo B.</small>
+    </section>
+
+    <section class="dashboard">
+      <article class="panel pedagogy">
+        <h2>Panel 1 · Explicación pedagógica</h2>
+        <div id="explanation"></div>
+      </article>
+
+      <article class="panel visualization">
+        <h2>Panel 2 · Visualización gráfica</h2>
+        <div id="visualization"></div>
+      </article>
+
+      <article class="panel math">
+        <h2>Panel 3 · Cálculos matemáticos</h2>
+        <div id="mathPanel"></div>
+      </article>
+
+      <article class="panel state">
+        <h2>Panel 4 · Estado interno del modelo</h2>
+        <div id="statePanel"></div>
+      </article>
+
+      <article class="panel params">
+        <h2>Panel 5 · Parámetros y pesos</h2>
+        <div id="paramsPanel"></div>
+      </article>
+
+      <article class="panel console">
+        <h2>Panel 6 · Consola de eventos</h2>
+        <ol id="eventLog"></ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
