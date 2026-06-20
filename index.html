@@ -48,7 +48,10 @@
       </div>
     </section>
 
-    <nav class="timeline" id="timeline" aria-label="Línea temporal del proceso"></nav>
+    <section class="step-navigator" aria-label="Línea temporal compacta del proceso">
+      <div class="step-summary" id="stepSummary"></div>
+      <nav class="stepper" id="stepper" aria-label="Selector de pasos"></nav>
+    </section>
 
     <section class="query-panel" id="queryPanel">
       <label for="userQuestion">Pregunta para inferencia</label>
@@ -84,7 +87,7 @@
       </article>
 
       <article class="panel console">
-        <h2>Panel 6 · Consola de eventos</h2>
+        <h2>Panel 6 · Secuencia de eventos</h2>
         <ol id="eventLog"></ol>
       </article>
     </section>
