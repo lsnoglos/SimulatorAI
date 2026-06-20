@@ -1,12 +1,7 @@
-/*
-  Simulador GPT educativo, escrito en JavaScript puro.
-  La intención didáctica es mostrar los componentes reales de un LLM moderno
-  con números pequeños y visualizaciones manejables para clase.
-*/
 const books = [
-  { title: 'LIBRO 1 · LOS GATOS', lines: ['Los gatos son animales domésticos.', 'Los gatos tienen pelo.', 'Los gatos toman agua.', 'Los gatos pueden beber leche.', 'Los gatos son mascotas.'] },
-  { title: 'LIBRO 2 · LOS PERROS', lines: ['Los perros son animales domésticos.', 'Los perros tienen pelo.', 'Los perros toman agua.', 'Los perros son mascotas.', 'Los perros ladran.'] },
-  { title: 'LIBRO 3 · LOS ANIMALES', lines: ['Los animales necesitan agua.', 'Los animales necesitan alimento.', 'Los animales pueden ser mascotas.', 'Los animales tienen características físicas.'] }
+  { title: 'Libro 1 · Gatos', lines: ['Los gatos son animales domésticos.', 'Los gatos tienen pelo.', 'Los gatos toman agua.', 'Los gatos pueden beber leche.', 'Los gatos son mascotas.'] },
+  { title: 'Libro 2 · Perros', lines: ['Los perros son animales domésticos.', 'Los perros tienen pelo.', 'Los perros toman agua.', 'Los perros son mascotas.', 'Los perros ladran.'] },
+  { title: 'Libro 3 · Animales', lines: ['Los animales necesitan agua.', 'Los animales necesitan alimento.', 'Los animales pueden ser mascotas.', 'Los animales tienen características físicas.'] }
 ];
 
 const corpus = books.flatMap(book => book.lines).join(' ');
@@ -14,84 +9,98 @@ const cleanCorpus = corpus.toLowerCase().normalize('NFD').replace(/[\u0300-\u036
 const tokens = cleanCorpus.split(' ');
 const vocabulary = [...new Set(tokens)].sort();
 const tokenIds = Object.fromEntries(vocabulary.map((token, index) => [token, index + 1]));
-const trainingExample = ['los', 'gatos', 'toman'];
-let userQuestion = '¿Qué es un gato?';
+const pipelineSteps = ['Libros', 'Corpus', 'Tokenización', 'Embeddings', 'Forward pass', 'Softmax', 'Loss', 'Backpropagation', 'Actualización', 'Modelo entrenado', 'Consulta', 'Respuesta'];
 let currentStep = 0;
+let userQuestion = '¿Qué es un gato?';
 let autoTimer = null;
-let eventHistory = [];
 
-const embeddings = Object.fromEntries(vocabulary.map((token, i) => [token, deterministicVector(i + 3, 100)]));
-const learnedPositions = {
-  gato: [31, 44], perro: [38, 47], animal: [52, 37], mascota: [45, 59], agua: [73, 68], leche: [78, 55]
-};
-const initialPositions = {
-  gato: [14, 20], perro: [74, 18], animal: [49, 76], mascota: [22, 70], agua: [82, 42], leche: [35, 35]
-};
-
-function deterministicVector(seed, dims) {
-  return Array.from({ length: dims }, (_, i) => Number((Math.sin(seed * (i + 1)) * 0.72).toFixed(2)));
-}
-function html(strings, ...values) { return strings.map((s, i) => s + (values[i] ?? '')).join(''); }
-function tokenChips(words) { return `<div class="token-row">${words.map(w => `<span class="token">${w}<br><span class="id">ID ${tokenIds[w] || 'UNK'}</span></span>`).join('')}</div>`; }
-function vectorPreview(word) { const v = embeddings[word] || deterministicVector(word.length, 100); return `<strong>${word}</strong><div class="embedding">${v.slice(0, 100).map(x => `<span title="${x}" style="opacity:${Math.abs(x) + .18}; background:${x >= 0 ? 'var(--accent)' : 'var(--accent-2)'}"></span>`).join('')}</div><small>[${v.slice(0, 8).join(', ')}, ... 100 valores]</small>`; }
-function probabilityBars(items) { return items.map(([name, value]) => `<div class="bar"><label><span>${name}</span><b>${value}%</b></label><div class="meter"><span style="width:${value}%"></span></div></div>`).join(''); }
-function attentionMatrix(words) { return `<table class="matrix"><tr><th></th>${words.map(w => `<th>${w}</th>`).join('')}</tr>${words.map((r, i) => `<tr><th>${r}</th>${words.map((_, j) => `<td class="${i === j || (r === 'gatos' && j === 2) ? 'hot' : ''}">${(0.12 + (i === j ? .52 : 0) + (j === 2 ? .18 : 0)).toFixed(2)}</td>`).join('')}</tr>`).join('')}</table>`; }
-function space(points, title) { return `<h3>${title}</h3><div class="space">${Object.entries(points).map(([name, [x,y]]) => `<span class="point" style="left:${x}%;top:${y}%"><label>${name}</label></span>`).join('')}</div>`; }
-function state(changing = false) { return `<div class="cards"><div class="card"><h3>Tokens</h3><p>${tokens.length}</p></div><div class="card"><h3>Vocabulario</h3><p>${vocabulary.length}</p></div><div class="card"><h3>Dimensión embedding</h3><p>100</p></div><div class="card"><h3>Estado de pesos</h3><p class="${changing ? 'changed' : 'frozen'}">${changing ? 'Cambian con gradiente' : 'Congelados / sin actualizar'}</p></div></div>`; }
-function weights(changing = false) { const rows = [['W_emb[17]', .51, changing ? .49 : .51], ['W_q[34]', .23, changing ? .20 : .23], ['W_v[62]', -.18, changing ? -.12 : -.18]]; return `<div class="weights">${rows.map(([n,a,b]) => `<div class="weight"><b>${n}</b><p>${a} → <span class="${a!==b?'changed':'frozen'}">${b}</span></p></div>`).join('')}</div>`; }
-
-const phases = [
-  { m:'Módulo A', t:'Construcción del conocimiento', e:'Antes de existir IA solo hay textos humanos. Una fuente de datos es cada libro; el corpus será la colección que permitirá observar patrones estadísticos.', v:()=>`<div class="book-grid">${books.map(b=>`<div class="book"><h3>${b.title}</h3>${b.lines.map(l=>`<p>${l}</p>`).join('')}</div>`).join('')}</div><p class="formula">No existe inteligencia todavía. No existe aprendizaje todavía. Solamente existen libros escritos por humanos.</p>`, math:'Datos brutos = documentos escritos por humanos.', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Creación del corpus', e:'El corpus concatena documentos. Todavía no son ejemplos de entrenamiento: es materia prima textual que luego se transformará.', v:()=>`<div class="flow"><span class="node">Libro 1</span><span class="arrow">+</span><span class="node">Libro 2</span><span class="arrow">+</span><span class="node">Libro 3</span><span class="arrow">=</span><span class="node">Corpus</span></div><p>${corpus}</p>`, math:'Corpus = D₁ ∪ D₂ ∪ D₃', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Preprocesamiento', e:'Se normaliza el texto: minúsculas, limpieza de símbolos y espacios. Esto reduce variaciones superficiales y hace el vocabulario más consistente.', v:()=>`<h3>Antes</h3><p>${corpus}</p><h3>Después</h3><p>${cleanCorpus}</p>`, math:'lowercase(text) → remove(puntuación) → tokens limpios', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Tokenización', e:'Cada palabra se transforma en token y cada token recibe un ID numérico. El modelo no procesa letras como significado directo, sino índices que apuntan a vectores.', v:()=>tokenChips(['los','gatos','son','animales','domesticos']), math:'los=ID '+tokenIds.los+', gatos=ID '+tokenIds.gatos+', son=ID '+tokenIds.son, s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Vocabulario', e:'El vocabulario define el universo de símbolos conocidos. Los tokens fuera de este conjunto se tratarían como desconocidos o se dividirían con otro tokenizador.', v:()=>`<div class="token-row">${vocabulary.map(w=>`<span class="token">${w}<br><span class="id">${tokenIds[w]}</span></span>`).join('')}</div>`, math:'|V| = '+vocabulary.length, s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Inicialización aleatoria', e:'Los embeddings nacen como parámetros aleatorios. Todavía no codifican significado; solo son coordenadas ajustables en un espacio vectorial de 100 dimensiones.', v:()=>`${vectorPreview('gatos')}${vectorPreview('perros')}`, math:'E[token] ∈ ℝ¹⁰⁰, inicializado con valores pequeños', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Creación de ejemplos', e:'El entrenamiento causal crea pares entrada→objetivo para predecir el siguiente token. Esta tarea fuerza al modelo a aprender regularidades del lenguaje.', v:()=>`<div class="cards"><div class="card">Entrada: Los<br>Objetivo: gatos</div><div class="card">Entrada: Los gatos<br>Objetivo: son</div><div class="card">Entrada: Los gatos toman<br>Objetivo: agua</div></div>`, math:'P(xₜ | x₁,...,xₜ₋₁)', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Embeddings', e:'El ID del token selecciona una fila de la matriz de embeddings. Esa fila es una representación distribuida que podrá acercarse a palabras con contextos similares.', v:()=>trainingExample.map(vectorPreview).join('<hr>'), math:'xᵢ = E[idᵢ]', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Forward pass', e:'Los embeddings fluyen por capas Transformer para producir logits. En forward pass solo se calcula la predicción; aún no se corrigen pesos.', v:()=>`<div class="flow">${trainingExample.map(w=>`<span class="node">${w}</span><span class="arrow">→</span>`).join('')}<span class="node">Transformer</span><span class="arrow">→</span><span class="node">Logits</span></div>`, math:'logits = Transformer(E[los,gatos,toman])', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Self attention', e:'La atención permite que cada token pese la relevancia de otros tokens. “toman” atiende fuertemente a “gatos” y “los” para anticipar un objeto plausible.', v:()=>attentionMatrix(trainingExample), math:'Attention(Q,K,V)=softmax(QKᵀ/√dₖ)V', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Predicción', e:'El modelo asigna probabilidades. Aquí se equivoca: predice leche con más probabilidad que agua, aunque el objetivo del ejemplo es agua.', v:()=>probabilityBars([['agua',20],['leche',50],['animal',15],['pelo',15]])+'<p>Predicción: <b>leche</b> · Correcto: <b>agua</b></p>', math:'argmax(P)=leche, y*=agua', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Softmax', e:'Softmax convierte puntajes no normalizados en una distribución de probabilidad que suma 1.', v:()=>probabilityBars([['agua',20],['leche',50],['animal',15],['pelo',15]]), math:'softmax(zᵢ)=e^{zᵢ}/Σⱼe^{zⱼ}', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Función de pérdida', e:'La entropía cruzada penaliza asignar baja probabilidad al token correcto. Si P(agua)=0.40, la pérdida es -ln(0.40)=0.91.', v:()=>`<div class="card"><h3>Cross Entropy Loss</h3><p class="formula">Loss = -log(P(token correcto)) = -log(0.40) = 0.91</p></div>`, math:'L = -Σ yᵢ log(pᵢ)', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo A', t:'Gradientes', e:'El gradiente indica cómo cambiaría la pérdida si movemos cada parámetro. No todos contribuyen igual; se resaltan variables con señal relevante.', v:()=>`<div class="cards"><div class="card changed">Variable 17</div><div class="card changed">Variable 34</div><div class="card changed">Variable 62</div></div>`, math:'∂L/∂θ = dirección local de mayor aumento; se actualiza en sentido contrario', s:()=>state(true), p:()=>weights(false) },
-  { m:'Módulo A', t:'Backpropagation', e:'La retropropagación aplica la regla de la cadena desde la pérdida hacia capas anteriores para calcular gradientes en embeddings y matrices Q,K,V.', v:()=>`<div class="flow"><span class="node">Loss</span><span class="arrow">←</span><span class="node">Softmax</span><span class="arrow">←</span><span class="node">Transformer</span><span class="arrow">←</span><span class="node">Embeddings</span></div>`, math:'∂L/∂θ₁ = (∂L/∂h)(∂h/∂θ₁)', s:()=>state(true), p:()=>weights(false) },
-  { m:'Módulo A', t:'Actualización de pesos', e:'El optimizador modifica parámetros. Fórmula correcta: nuevo peso = peso actual − learning rate × gradiente. Aquí sí hay aprendizaje.', v:()=>weights(true), math:'θₙᵤₑᵥₒ = θ - η∇θL', s:()=>state(true), p:()=>weights(true) },
-  { m:'Módulo A', t:'Epochs', e:'Una epoch recorre el dataset. Al repetir muchas veces, la pérdida baja si el modelo aprende patrones útiles sin memorizar de forma problemática.', v:()=>`<div class="loss-chart">${[[1,.91],[2,.70],[3,.42],[4,.20],[5,.05]].map(([e,l])=>`<div class="loss-bar" style="height:${l*170}px"><small>E${e}<br>${l}</small></div>`).join('')}</div>`, math:'Loss media por epoch: 0.91 → 0.70 → 0.42 → 0.20 → 0.05', s:()=>state(true), p:()=>weights(true) },
-  { m:'Módulo A', t:'Embeddings aprendidos', e:'Gato y perro terminan cerca porque aparecen en contextos parecidos: animales domésticos, tienen pelo, toman agua y son mascotas. Nadie escribió una regla explícita.', v:()=>space(initialPositions,'Posición inicial')+space(learnedPositions,'Posición final aprendida'), math:'sim(gato, perro)=cos(e_gato,e_perro) aumenta por contextos compartidos', s:()=>state(false), p:()=>weights(true) },
-  { m:'Módulo A', t:'Modelo entrenado', e:'Finalizado el entrenamiento, los parámetros quedan congelados para inferencia. La consulta no debe actualizar pesos ni calcular pérdida.', v:()=>`<div class="cards"><div class="card"><h3>Tokens</h3>${tokens.length}</div><div class="card"><h3>Parámetros didácticos</h3>${vocabulary.length * 100}</div><div class="card"><h3>Epochs</h3>5</div><div class="card"><h3>Loss final</h3>0.05</div></div>`, math:'θ* = parámetros entrenados y congelados', s:()=>state(false), p:()=>weights(true) },
-  { m:'Módulo B', t:'Consulta: tokenización', e:'El usuario escribe una pregunta. Durante inferencia se tokeniza la entrada, pero no se crea etiqueta objetivo ni loss de entrenamiento.', v:()=>tokenChips(tokenizeQuestion()), math:'IDs consulta = ['+tokenizeQuestion().map(w=>tokenIds[w]||'UNK').join(', ')+']', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Consulta: embeddings', e:'Los tokens de la pregunta recuperan vectores ya aprendidos. Esos vectores son parámetros congelados.', v:()=>tokenizeQuestion().map(vectorPreview).join('<hr>'), math:'x_consulta = E_congelado[ids]', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Positional encoding', e:'El modelo necesita orden. El positional encoding se suma al embedding para distinguir “gato muerde perro” de “perro muerde gato”.', v:()=>`<table class="matrix"><tr><th>Token</th><th>Posición</th><th>Embedding + PE</th></tr>${tokenizeQuestion().map((w,i)=>`<tr><td>${w}</td><td>${i}</td><td>x${i}+PE${i}</td></tr>`).join('')}</table>`, math:'hᵢ⁰ = E[tokenᵢ] + PE(i)', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Self attention en consulta', e:'La palabra “gato” concentra peso porque contiene la entidad sobre la que se pregunta. Otras palabras estructuran la intención.', v:()=>attentionMatrix(tokenizeQuestion()), math:'pesos atención ≈ gato 0.80, qué 0.10, es 0.05, un 0.05', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Query, Key, Value', e:'Cada token se proyecta a Q, K y V. Q pregunta qué buscar, K anuncia qué contiene un token y V transporta la información que se mezcla.', v:()=>`<div class="qkv-grid">${tokenizeQuestion().map(w=>`<div class="card"><h3>${w}</h3><p>Q=Wq·x</p><p>K=Wk·x</p><p>V=Wv·x</p></div>`).join('')}</div>`, math:'Attention(Q,K,V)=softmax(QKᵀ/√dₖ)V', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Transformer contextual', e:'El Transformer produce representaciones contextuales. “banco” puede significar institución financiera o asiento según las palabras vecinas.', v:()=>`<div class="cards"><div class="card">banco + dinero → entidad financiera</div><div class="card">banco + parque → asiento</div></div>`, math:'hᵢᴸ = TransformerBlock(...TransformerBlock(hᵢ⁰))', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Softmax de salida', e:'La capa final estima el siguiente token más probable. No hay respuesta completa todavía: solo la próxima pieza textual.', v:()=>probabilityBars([['animal',60],['mascota',20],['felino',15],['otro',5]]), math:'P(siguiente token | pregunta) = softmax(W_out h)', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Generación autorregresiva', e:'Cada token generado se añade al contexto y vuelve a entrar al modelo. Así se produce una respuesta palabra por palabra.', v:()=>`<div class="flow">${['Un','gato','es','un','animal','doméstico'].map(w=>`<span class="node">${w}</span><span class="arrow">→</span>`).join('')}<span class="node">fin</span></div>`, math:'xₜ₊₁ ~ P(· | x₁...xₜ)', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo B', t:'Respuesta final', e:'Durante inferencia NO existe loss, gradiente, backpropagation, actualización de parámetros ni entrenamiento. Solo se usan los parámetros aprendidos previamente.', v:()=>`<div class="card"><h3>Respuesta generada</h3><p>Un gato es un animal doméstico que puede ser mascota, tiene pelo y toma agua.</p></div>`, math:'Solo forward pass repetido; θ permanece constante', s:()=>state(false), p:()=>weights(false) },
-  { m:'Módulo C', t:'Comparación entrenamiento vs inferencia', e:'Entrenamiento ajusta parámetros usando datos, objetivos, loss y gradientes. Inferencia reutiliza parámetros congelados para generar predicciones.', v:()=>`<table class="compare"><tr><th>Aspecto</th><th>Entrenamiento</th><th>Inferencia</th></tr>${[['Dataset','Sí, corpus convertido en ejemplos','No, solo prompt del usuario'],['Loss','Sí','No'],['Gradiente','Sí','No'],['Backpropagation','Sí','No'],['Actualización de parámetros','Sí','No'],['Aprendizaje','Sí','No'],['Predicción','Sí, para medir error','Sí, para responder'],['Tiempo de ejecución','Costoso y prolongado','Rápido por consulta']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`, math:'Entrenar: minimizar L(θ). Inferir: calcular P(y|x,θ*)', s:()=>state(false), p:()=>weights(false) }
+const semanticEpochs = [
+  { epoch: 1, loss: 0.91, lr: 0.10, changed: 120, tokens: 18, insight: 'gato y perro: sin relación clara', sim: 0.12, point: 18 },
+  { epoch: 2, loss: 0.70, lr: 0.08, changed: 220, tokens: 36, insight: 'comienzan a compartir contexto', sim: 0.34, point: 34 },
+  { epoch: 3, loss: 0.42, lr: 0.06, changed: 310, tokens: 54, insight: 'se acercan semánticamente', sim: 0.58, point: 52 },
+  { epoch: 4, loss: 0.20, lr: 0.04, changed: 430, tokens: 72, insight: 'muy similares', sim: 0.76, point: 68 },
+  { epoch: 5, loss: 0.05, lr: 0.02, changed: 510, tokens: 90, insight: 'altamente relacionados', sim: 0.91, point: 78 }
 ];
 
-function tokenizeQuestion() { return userQuestion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, ' ?').replace(/[.,;]/g, '').trim().split(/\s+/).filter(Boolean); }
+function normalize(text) { return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?]/g, ' ?').replace(/[.,;]/g, '').trim().split(/\s+/).filter(Boolean); }
+function deterministicVector(seed, dims = 12) { return Array.from({ length: dims }, (_, i) => Number((Math.sin(seed * (i + 1)) * 0.72).toFixed(2))); }
+function tokenChips(words) { return `<div class="token-flow">${words.map(w => `<span class="token-chip"><b>${w}</b><small>ID ${tokenIds[w] || 'UNK'}</small></span>`).join('<span class="data-arrow">→</span>')}</div>`; }
+function vectorBlock(word, after = false) { const v = deterministicVector((tokenIds[word] || word.length) + (after ? 8 : 0), 10); return `<div class="vector-card"><b>${word}</b><div class="vector-bars">${v.map(n => `<i style="height:${Math.abs(n) * 42 + 8}px;background:${n >= 0 ? 'var(--cyan)' : 'var(--violet)'}"></i>`).join('')}</div><code>[${v.slice(0, 6).join(', ')}, ...]</code></div>`; }
+function probabilityBars(items) { return `<div class="probabilities">${items.map(([name, value]) => `<div><label><span>${name}</span><b>${value}%</b></label><meter min="0" max="100" value="${value}"></meter></div>`).join('')}</div>`; }
+function accordion(items) { return items.map((item, i) => `<details ${i < 2 ? 'open' : ''}><summary>${item.title}</summary><p>${item.text}</p></details>`).join(''); }
+function mathCard({ name, goal, receives, returns, example, interpretation }) { return `<article class="math-card"><h3>${name}</h3><p><b>¿Para qué sirve?</b> ${goal}</p><p><b>¿Qué recibe?</b> ${receives}</p><p><b>¿Qué devuelve?</b> ${returns}</p><code>${example}</code><p><b>Interpretación:</b> ${interpretation}</p></article>`; }
+function stateCard(mode, epoch) { const train = mode === 'training'; return `<div class="state-grid"><span>Modo<b>${train ? 'Entrenamiento' : 'Inferencia'}</b></span><span>Epoch<b>${train ? epoch.epoch : 'No existe'}</b></span><span>Loss<b>${train ? epoch.loss : 'No existe'}</b></span><span>Learning rate<b>${train ? epoch.lr : 'No existe'}</b></span><span>Pesos modificados<b>${train ? epoch.changed : '0 · congelados'}</b></span><span>Tokens procesados<b>${train ? epoch.tokens : normalize(userQuestion).length}</b></span><span>Gradiente<b>${train ? 'Calculado' : 'No existe'}</b></span><span>Backpropagation<b>${train ? 'Activa' : 'No existe'}</b></span></div>`; }
+function semanticPanel(epochIndex = 0) { return `<div class="semantic-card"><p><b>Epoch ${semanticEpochs[epochIndex].epoch}</b>: ${semanticEpochs[epochIndex].insight}</p><div class="semantic-line"><span style="left:12%">gato</span><span class="dog" style="left:${semanticEpochs[epochIndex].point}%">perro</span></div><p>Similitud coseno gato↔perro: <b>${semanticEpochs[epochIndex].sim}</b></p></div>`; }
+function embeddingsEvolution() { return `<div class="before-after"><section><h3>ANTES</h3>${vectorBlock('gatos')}${vectorBlock('perros')}</section><section><h3>DESPUÉS</h3>${vectorBlock('gatos', true)}${vectorBlock('perros', true)}</section></div>${semanticPanel(4)}`; }
+
+const steps = [
+  { phase:'Fase 1 · Construcción del conocimiento', sub:'Libros → corpus', goal:'Convertir textos humanos en materia prima observable.', mode:'Preparación', pipe:1, learn:0,
+    brief:[['Qué ocurre','Los libros se reúnen como fuentes. Todavía no hay IA ni pesos aprendidos.'],['Qué entra','Frases humanas sobre gatos, perros, animales, agua y mascotas.'],['Qué sale','Un corpus textual que conserva patrones repetidos.'],['Qué observar','El conocimiento inicial está en el texto, no en el modelo.']],
+    visual:()=>`<div class="book-grid">${books.map(b=>`<article><h3>${b.title}</h3>${b.lines.map(l=>`<p>${l}</p>`).join('')}</article>`).join('')}</div><div class="big-flow"><span>LIBROS</span><b>↓</b><span>CORPUS</span></div>`,
+    math:()=>mathCard({ name:'Corpus = unión de documentos', goal:'Reunir ejemplos lingüísticos para detectar regularidades.', receives:'Documentos D₁, D₂, D₃.', returns:'Texto concatenado que será limpiado y tokenizado.', example:'Corpus = D₁ ∪ D₂ ∪ D₃', interpretation:'No calcula significado; solo organiza la evidencia textual.' }), state:()=>stateCard('prep', semanticEpochs[0]) },
+  { phase:'Fase 2 · Representación', sub:'Tokenización y vocabulario', goal:'Traducir palabras a identificadores procesables.', mode:'Representación', pipe:3, learn:0,
+    brief:[['Qué ocurre','El texto limpio se divide en tokens y cada token recibe un ID.'],['Por qué ocurre','La red opera con números, no con palabras directamente.'],['Qué cambia','La frase deja de ser texto libre y pasa a ser una secuencia discreta.'],['Qué no cambia','Los parámetros aún no aprenden.']],
+    visual:()=>`<div class="text-transform"><p>${corpus}</p><b>↓ limpieza</b><p>${cleanCorpus}</p></div>${tokenChips(['los','gatos','toman','agua'])}<div class="vocab-cloud">${vocabulary.map(w=>`<span>${w}<small>${tokenIds[w]}</small></span>`).join('')}</div>`,
+    math:()=>mathCard({ name:'Tokenización', goal:'Crear símbolos discretos que indexan vectores.', receives:'Texto normalizado: “los gatos toman agua”.', returns:'IDs: [' + ['los','gatos','toman','agua'].map(w=>tokenIds[w]).join(', ') + '].', example:'token_id("gatos") = ' + tokenIds.gatos, interpretation:'El ID no contiene significado; solo apunta a una fila de la matriz de embeddings.' }), state:()=>stateCard('prep', semanticEpochs[0]) },
+  { phase:'Fase 2 · Representación', sub:'Embeddings', goal:'Convertir IDs en vectores ajustables.', mode:'Representación', pipe:4, learn:0,
+    brief:[['Qué ocurre','Cada ID selecciona una fila de la matriz E.'],['Qué entra','IDs de tokens.'],['Qué sale','Vectores numéricos de muchas dimensiones.'],['Qué aprende','Aún nada: las coordenadas iniciales son arbitrarias.']],
+    visual:()=>`<div class="big-flow"><span>ID gato</span><b>↓</b><span>fila E[gato]</span><b>↓</b><span>vector 100D</span></div><div class="vector-row">${['gatos','perros','mascotas'].map(w=>vectorBlock(w)).join('')}</div>`,
+    math:()=>mathCard({ name:'Embedding', goal:'Representar tokens en un espacio continuo donde puedan compararse.', receives:'Un ID de token y la matriz E.', returns:'Un vector xᵢ = E[idᵢ].', example:'E[gato] = [0.12, 0.45, -0.22, ...]', interpretation:'Durante el entrenamiento, palabras con contextos similares moverán sus vectores hacia zonas cercanas.' }), state:()=>stateCard('prep', semanticEpochs[0]) },
+  { phase:'Fase 3 · Aprendizaje', sub:'Forward pass y attention', goal:'Predecir el siguiente token antes de corregir el modelo.', mode:'Entrenamiento', pipe:5, learn:1,
+    brief:[['Qué ocurre','Los embeddings fluyen por attention y Transformer hasta producir logits.'],['Por qué ocurre','Necesitamos una predicción para medir error.'],['Qué entra','“los gatos toman”.'],['Qué sale','Puntajes para posibles siguientes tokens.']],
+    visual:()=>`<div class="process-lab"><span>Tokens</span><i></i><span>Embeddings</span><i></i><span class="active">Attention Q·K</span><i></i><span>Transformer</span><i></i><span>Logits</span></div><div class="attention-grid">${['los','gatos','toman'].map(r=>['los','gatos','toman'].map(c=>`<span class="${r==='toman'&&c==='gatos'?'hot':''}">${r}→${c}<b>${r===c?'.64':(c==='gatos'?'.31':'.08')}</b></span>`).join('')).join('')}</div>`,
+    math:()=>mathCard({ name:'Attention(Q,K,V)', goal:'Determinar qué palabras son relevantes para cada token.', receives:'Q=lo que busco, K=lo que cada token ofrece, V=información que se mezclará.', returns:'Vectores contextuales ponderados.', example:'Para “toman”: gatos=0.80, los=0.12, toman=0.08', interpretation:'El modelo usa “gatos” para anticipar que el siguiente token plausible puede ser “agua”.' }), state:()=>stateCard('training', semanticEpochs[1]) },
+  { phase:'Fase 3 · Aprendizaje', sub:'Softmax, loss y gradiente', goal:'Convertir puntajes en probabilidades y medir el error.', mode:'Entrenamiento', pipe:7, learn:2,
+    brief:[['Qué ocurre','Softmax normaliza logits y Cross Entropy castiga la baja probabilidad del token correcto.'],['Qué entra','Logits del Transformer y objetivo “agua”.'],['Qué sale','Loss y gradientes.'],['Qué cambia','Aparece una señal que indica hacia dónde ajustar parámetros.']],
+    visual:()=>`${probabilityBars([['agua',20],['leche',50],['pelo',15],['animal',15]])}<div class="error-flow"><span>Correcto: agua</span><b>error</b><span>Loss 0.91</span><b>gradiente ⇠</b><span>parámetros</span></div>`,
+    math:()=>mathCard({ name:'Softmax + Cross Entropy', goal:'Comparar predicción con la respuesta correcta.', receives:'Logits z y etiqueta correcta y=agua.', returns:'Probabilidades y pérdida escalar.', example:'Loss = -log(P(agua)) = -log(0.40) = 0.91', interpretation:'Como la probabilidad de “agua” es baja, el modelo recibe una corrección fuerte.' }), state:()=>stateCard('training', semanticEpochs[2]) },
+  { phase:'Fase 3 · Aprendizaje', sub:'Backpropagation y actualización', goal:'Modificar parámetros para reducir futuros errores.', mode:'Entrenamiento', pipe:9, learn:3,
+    brief:[['Qué ocurre','La señal de error viaja hacia atrás por Softmax, Transformer, Attention y Embeddings.'],['Qué aprende','Aumenta la compatibilidad entre contextos “gatos toman” y “agua”.'],['Qué cambia','Embeddings y matrices Q,K,V,W se ajustan.'],['Qué no cambia','El corpus textual original no cambia.']],
+    visual:()=>`<div class="backward"><span>Loss</span><i>←</i><span>Softmax</span><i>←</i><span>Transformer</span><i>←</i><span>Attention</span><i>←</i><span>Embeddings</span></div>${embeddingsEvolution()}`,
+    math:()=>mathCard({ name:'Descenso por gradiente', goal:'Mover cada peso en dirección que reduzca la pérdida.', receives:'Peso actual θ, learning rate η y gradiente ∇L.', returns:'Nuevo peso actualizado.', example:'θ nuevo = θ - η∇L = 0.51 - 0.10×0.20 = 0.49', interpretation:'Aquí sí hay aprendizaje: los parámetros cambian por evidencia de error.' }), state:()=>stateCard('training', semanticEpochs[3]) },
+  { phase:'Fase 4 · Entrenamiento completo', sub:'Epochs y espacio semántico', goal:'Observar cómo se estabiliza lo aprendido.', mode:'Entrenamiento', pipe:10, learn:4,
+    brief:[['Qué ocurre','El dataset se recorre varias veces.'],['Qué cambia','La loss baja y los embeddings semánticamente relacionados se acercan.'],['Qué aprende','gato↔perro, gato↔mascota y perro↔animal comparten contexto.'],['Qué debe observar','Aprender no es memorizar una frase: es reorganizar parámetros.']],
+    visual:()=>`<div class="loss-chart">${semanticEpochs.map(e=>`<span style="height:${e.loss*190+10}px"><b>E${e.epoch}</b><small>${e.loss}</small></span>`).join('')}</div>${embeddingsEvolution()}`,
+    math:()=>mathCard({ name:'Similitud coseno', goal:'Medir cercanía semántica entre embeddings.', receives:'Dos vectores: e_gato y e_perro.', returns:'Un valor entre -1 y 1.', example:'cos(gato, perro): 0.12 → 0.91', interpretation:'La cercanía aumenta porque ambos aparecen como animales, mascotas, con pelo y tomando agua.' }), state:()=>stateCard('training', semanticEpochs[4]) },
+  { phase:'Fase 5 · Inferencia', sub:'Consulta → respuesta', goal:'Usar parámetros congelados para generar texto.', mode:'Inferencia', pipe:11, learn:4,
+    brief:[['Qué ocurre','La consulta se tokeniza y atraviesa el modelo entrenado.'],['Qué entra','Pregunta del usuario.'],['Qué sale','Una respuesta generada token por token.'],['Qué no existe','No hay loss, gradiente, backpropagation ni aprendizaje.']],
+    visual:()=>`${tokenChips(normalize(userQuestion))}<div class="process-lab"><span>Prompt</span><i></i><span>Embeddings congelados</span><i></i><span>Attention</span><i></i><span>Softmax</span><i></i><span class="active">Respuesta</span></div>${probabilityBars([['animal',60],['mascota',20],['felino',15],['otro',5]])}<div class="answer">Un gato es un animal doméstico que puede ser mascota, tiene pelo y toma agua.</div>`,
+    math:()=>mathCard({ name:'Generación autorregresiva', goal:'Elegir el siguiente token usando el contexto ya producido.', receives:'Prompt + tokens generados previamente + parámetros θ*.', returns:'Distribución del siguiente token.', example:'P(siguiente | “qué es un gato”) → animal: 0.60', interpretation:'La respuesta completa surge repitiendo forward pass; los pesos permanecen congelados.' }), state:()=>stateCard('inference', semanticEpochs[4]) },
+  { phase:'Fase 6 · Comparación', sub:'Entrenamiento vs inferencia', goal:'Distinguir con precisión qué cambia y qué no cambia.', mode:'Comparación', pipe:12, learn:4,
+    brief:[['Entrenamiento','Usa objetivos, calcula loss, gradientes y modifica pesos.'],['Inferencia','Usa pesos congelados para responder.'],['Idea clave','Predicción ocurre en ambos; aprendizaje solo ocurre en entrenamiento.'],['Resultado','El estudiante identifica entrada, salida, transformación y cambio de parámetros.']],
+    visual:()=>`<table class="compare"><tr><th>Aspecto</th><th>Entrenamiento</th><th>Inferencia</th></tr>${[['Entrada','Corpus + objetivos','Prompt del usuario'],['Loss','Sí','No existe'],['Gradiente','Sí','No existe'],['Backpropagation','Sí','No existe'],['Aprendizaje','Sí, actualiza θ','No, θ congelado'],['Salida','Modelo más ajustado','Texto generado']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`,
+    math:()=>mathCard({ name:'Dos objetivos distintos', goal:'Separar optimización de uso del modelo.', receives:'Entrenar: dataset. Inferir: prompt.', returns:'Entrenar: θ*. Inferir: respuesta.', example:'Entrenar = minimizar L(θ); Inferir = calcular P(y|x,θ*)', interpretation:'Si no se actualizan parámetros, el modelo no está aprendiendo en ese momento.' }), state:()=>stateCard('inference', semanticEpochs[4]) }
+];
+
 function render() {
-  const phase = phases[currentStep];
-  moduleBadge.textContent = phase.m; phaseTitle.textContent = phase.t; phaseCounter.textContent = `Paso ${currentStep + 1} de ${phases.length}`;
-  explanation.innerHTML = `<p>${phase.e}</p>`; visualization.innerHTML = phase.v(); mathPanel.innerHTML = `<div class="formula">${phase.math}</div>`; statePanel.innerHTML = phase.s(); paramsPanel.innerHTML = phase.p();
-  const progress = Math.round((currentStep / (phases.length - 1)) * 100); progressBar.value = progress; progressText.textContent = `${progress}%`;
-  [...timeline.children].forEach((btn, i) => btn.classList.toggle('active', i === currentStep));
-  addEvent(`${phase.m} · ${phase.t}`);
+  const step = steps[currentStep];
+  phaseName.textContent = step.phase;
+  subphaseName.textContent = step.sub;
+  currentGoal.textContent = step.goal;
+  stageMode.textContent = step.mode;
+  stageTitle.textContent = step.sub;
+  visualization.innerHTML = step.visual();
+  learningBrief.innerHTML = accordion(step.brief.map(([title, text]) => ({ title, text })));
+  mathPanel.innerHTML = step.math();
+  modelState.innerHTML = step.state();
+  aiLearning.innerHTML = semanticPanel(step.learn);
+  pipeline.innerHTML = pipelineSteps.map((p, i) => `<li class="${i + 1 < step.pipe ? 'done' : i + 1 === step.pipe ? 'active' : ''}"><span>${i + 1}</span>${p}</li>`).join('');
+  const progress = Math.round((currentStep / (steps.length - 1)) * 100);
+  progressFill.style.width = `${progress}%`;
+  progressText.textContent = `${progress}% · Paso ${currentStep + 1} de ${steps.length}`;
+  [...phaseRail.children].forEach((button, i) => button.classList.toggle('active', i === currentStep));
 }
-function addEvent(text) { eventHistory.unshift(`${new Date().toLocaleTimeString()} — ${text}`); eventHistory = eventHistory.slice(0, 14); eventLog.innerHTML = eventHistory.map(e => `<li>${e}</li>`).join(''); }
-function buildTimeline() { timeline.innerHTML = phases.map((p, i) => `<button data-step="${i}">${i + 1}. ${p.t}</button>`).join(''); timeline.addEventListener('click', e => { if (e.target.dataset.step) { currentStep = Number(e.target.dataset.step); render(); } }); }
+
+function buildRail() { phaseRail.innerHTML = steps.map((step, i) => `<button data-step="${i}"><b>${step.phase.replace(' · ', '<br>')}</b><small>${step.sub}</small></button>`).join(''); }
 function stopAuto() { clearInterval(autoTimer); autoTimer = null; autoBtn.textContent = 'Autoejecución'; }
 
+buildRail();
+phaseRail.addEventListener('click', event => { const button = event.target.closest('button[data-step]'); if (!button) return; currentStep = Number(button.dataset.step); render(); });
 prevBtn.onclick = () => { currentStep = Math.max(0, currentStep - 1); render(); };
-nextBtn.onclick = () => { currentStep = Math.min(phases.length - 1, currentStep + 1); render(); };
-resetBtn.onclick = () => { stopAuto(); currentStep = 0; eventHistory = []; render(); };
-autoBtn.onclick = () => { if (autoTimer) return stopAuto(); autoBtn.textContent = 'Pausar autoejecución'; autoTimer = setInterval(() => { if (currentStep >= phases.length - 1) return stopAuto(); currentStep += 1; render(); }, Number(speedSelect.value)); };
+nextBtn.onclick = () => { currentStep = Math.min(steps.length - 1, currentStep + 1); render(); };
+resetBtn.onclick = () => { stopAuto(); currentStep = 0; render(); };
+autoBtn.onclick = () => { if (autoTimer) return stopAuto(); autoBtn.textContent = 'Pausar'; autoTimer = setInterval(() => { if (currentStep >= steps.length - 1) return stopAuto(); currentStep += 1; render(); }, Number(speedSelect.value)); };
 speedSelect.onchange = () => { if (autoTimer) { stopAuto(); autoBtn.click(); } };
-applyQuestion.onclick = () => { userQuestion = document.getElementById('userQuestion').value || '¿Qué es un gato?'; render(); };
-const userQuestionInput = document.getElementById('userQuestion');
+applyQuestion.onclick = () => { userQuestion = userQuestionInput.value || '¿Qué es un gato?'; render(); };
 
-buildTimeline();
 render();

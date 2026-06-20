@@ -3,90 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simulador GPT Educativo</title>
+  <title>Laboratorio GPT · Simulador universitario</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!--
-    Simulador educativo de un LLM tipo GPT.
-    Todo el proyecto usa HTML, CSS y JavaScript puro para que pueda abrirse
-    directamente en un navegador, sin dependencias ni frameworks.
-  -->
-  <header class="hero">
+  <header class="lab-header">
     <div>
       <p class="eyebrow">Laboratorio universitario de Inteligencia Artificial</p>
-      <h1>Simulador visual del funcionamiento interno de un modelo tipo GPT</h1>
-      <p>
-        Avanza paso a paso por entrenamiento, inferencia y comparación. Cada fase
-        muestra datos de entrada, salida, cálculos, parámetros y eventos internos.
-      </p>
+      <h1>Simulador interactivo del entrenamiento e inferencia de un modelo tipo GPT</h1>
     </div>
-    <div class="phase-card" aria-live="polite">
-      <span id="moduleBadge">Módulo A</span>
-      <strong id="phaseTitle">Construcción del conocimiento</strong>
-      <small id="phaseCounter">Paso 1 de 29</small>
-    </div>
+    <section class="objective-card" aria-live="polite">
+      <span id="phaseName">Fase</span>
+      <strong id="subphaseName">Subfase</strong>
+      <p id="currentGoal">Objetivo actual</p>
+      <div class="progress-line"><span id="progressFill"></span></div>
+      <small id="progressText">0%</small>
+    </section>
   </header>
 
-  <main class="app-shell">
-    <section class="controls" aria-label="Controles generales del simulador">
-      <button id="prevBtn">← Paso anterior</button>
-      <button id="nextBtn" class="primary">Siguiente paso →</button>
-      <button id="resetBtn">Reiniciar simulación</button>
+  <main class="lab-shell">
+    <section class="control-bar" aria-label="Controles del laboratorio">
+      <button id="prevBtn">← Anterior</button>
+      <button id="nextBtn" class="primary">Siguiente →</button>
+      <button id="resetBtn">Reiniciar</button>
       <button id="autoBtn">Autoejecución</button>
-      <label>
-        Velocidad
+      <label>Velocidad
         <select id="speedSelect">
-          <option value="2200">Lenta</option>
-          <option value="1400" selected>Normal</option>
-          <option value="750">Rápida</option>
+          <option value="2600">Lenta</option>
+          <option value="1700" selected>Normal</option>
+          <option value="900">Rápida</option>
         </select>
       </label>
-      <div class="progress-wrap">
-        <div class="progress-label"><span>Progreso</span><span id="progressText">0%</span></div>
-        <progress id="progressBar" value="0" max="100"></progress>
-      </div>
+      <label class="question-control">Consulta
+        <input id="userQuestion" value="¿Qué es un gato?" />
+      </label>
+      <button id="applyQuestion">Aplicar consulta</button>
     </section>
 
-    <nav class="timeline" id="timeline" aria-label="Línea temporal del proceso"></nav>
+    <nav class="phase-rail" id="phaseRail" aria-label="Fases agrupadas del proceso GPT"></nav>
 
-    <section class="query-panel" id="queryPanel">
-      <label for="userQuestion">Pregunta para inferencia</label>
-      <input id="userQuestion" value="¿Qué es un gato?" />
-      <button id="applyQuestion">Aplicar pregunta</button>
-      <small>La consulta se tokeniza cuando llegas al Módulo B.</small>
-    </section>
+    <section class="lab-grid">
+      <aside class="side-panel left-panel">
+        <h2>¿Qué está pasando?</h2>
+        <div id="learningBrief"></div>
+        <h2>Pipeline de ejecución</h2>
+        <ol class="pipeline" id="pipeline"></ol>
+      </aside>
 
-    <section class="dashboard">
-      <article class="panel pedagogy">
-        <h2>Panel 1 · Explicación pedagógica</h2>
-        <div id="explanation"></div>
-      </article>
-
-      <article class="panel visualization">
-        <h2>Panel 2 · Visualización gráfica</h2>
+      <section class="main-stage" aria-live="polite">
+        <div class="stage-title">
+          <span id="stageMode">Modo</span>
+          <h2 id="stageTitle">Simulación visual</h2>
+        </div>
         <div id="visualization"></div>
-      </article>
+      </section>
 
-      <article class="panel math">
-        <h2>Panel 3 · Cálculos matemáticos</h2>
+      <aside class="side-panel right-panel">
+        <h2>Matemáticas</h2>
         <div id="mathPanel"></div>
-      </article>
-
-      <article class="panel state">
-        <h2>Panel 4 · Estado interno del modelo</h2>
-        <div id="statePanel"></div>
-      </article>
-
-      <article class="panel params">
-        <h2>Panel 5 · Parámetros y pesos</h2>
-        <div id="paramsPanel"></div>
-      </article>
-
-      <article class="panel console">
-        <h2>Panel 6 · Consola de eventos</h2>
-        <ol id="eventLog"></ol>
-      </article>
+        <h2>Estado del modelo</h2>
+        <div id="modelState"></div>
+        <h2>¿Qué está aprendiendo la IA?</h2>
+        <div id="aiLearning"></div>
+      </aside>
     </section>
   </main>
 
